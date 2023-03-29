@@ -66,17 +66,46 @@ import org.apache.rocketmq.remoting.protocol.route.QueueData;
 import org.apache.rocketmq.remoting.protocol.route.TopicRouteData;
 import org.apache.rocketmq.remoting.protocol.statictopic.TopicQueueMappingInfo;
 
+/**
+ * 路由信息管理器
+ */
 public class RouteInfoManager {
     private static final Logger log = LoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
+    /**
+     * NameServer 与 Broker 空闲时长，默认2分钟，
+     * 如果超过2分钟没有收到Broker的心跳，就认为Broker已经下线
+     */
     private final static long DEFAULT_BROKER_CHANNEL_EXPIRED_TIME = 1000 * 60 * 2;
+    /**
+     * 读写锁，用来保护非线程安全容器 HashMap
+     */
     private final ReadWriteLock lock = new ReentrantReadWriteLock();
+    /**
+     * key是topic，value是topic对应的队列信息；
+     * value是一个map，key是brokerName，value是QueueData；
+     * QueueData是一个队列信息，包含了brokerName、读写队列数、读写权限
+     */
     private final Map<String/* topic */, Map<String, QueueData>> topicQueueTable;
+
+    /**
+     * key是brokerName，value是BrokerData；
+     * BrokerData是一个broker信息，包含了brokerName、brokerId、broker地址
+     */
     private final Map<String/* brokerName */, BrokerData> brokerAddrTable;
+
+    /**
+     * key是clusterName，value是brokerName集合；
+     * brokerName集合是一个brokerName的集合，每个brokerName对应一个broker
+     */
     private final Map<String/* clusterName */, Set<String/* brokerName */>> clusterAddrTable;
+    /**
+     * key是brokerAddr，value是BrokerLiveInfo；
+     */
     private final Map<BrokerAddrInfo/* brokerAddr */, BrokerLiveInfo> brokerLiveTable;
     private final Map<BrokerAddrInfo/* brokerAddr */, List<String>/* Filter Server */> filterServerTable;
     private final Map<String/* topic */, Map<String/*brokerName*/, TopicQueueMappingInfo>> topicQueueMappingInfoTable;
 
+    // 用来批量注销Broker，RocketMQ 5.0.0 版本新增
     private final BatchUnregistrationService unRegisterService;
 
     private final NamesrvController namesrvController;
@@ -654,6 +683,7 @@ public class RouteInfoManager {
         return Collections.min(brokerData.getBrokerAddrs().keySet()) > 0;
     }
 
+    // pickupTopicRouteData: 从 topicRouteTable 中获取 topic 的路由信息
     public TopicRouteData pickupTopicRouteData(final String topic) {
         TopicRouteData topicRouteData = new TopicRouteData();
         boolean foundQueueData = false;
@@ -757,9 +787,14 @@ public class RouteInfoManager {
         return null;
     }
 
+    /**
+     * scanNotActiveBroker: 扫描不活跃的 Broker
+     * 如果 Broker 超时，关闭 Broker 的 Channel
+     */
     public void scanNotActiveBroker() {
         try {
             log.info("start scanNotActiveBroker");
+            // 遍历
             for (Entry<BrokerAddrInfo, BrokerLiveInfo> next : this.brokerLiveTable.entrySet()) {
                 long last = next.getValue().getLastUpdateTimestamp();
                 long timeoutMillis = next.getValue().getHeartbeatTimeoutMillis();

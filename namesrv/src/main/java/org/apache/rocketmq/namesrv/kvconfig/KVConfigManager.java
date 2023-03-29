@@ -41,6 +41,10 @@ public class KVConfigManager {
         this.namesrvController = namesrvController;
     }
 
+    /**
+     * 加载KV配置表，即 kvConfig.json 文件
+     * 保存到 configTable 中
+     */
     public void load() {
         String content = null;
         try {
@@ -169,6 +173,11 @@ public class KVConfigManager {
         return null;
     }
 
+    /**
+     * 周期性打印所有的配置信息
+     * config包括了broker的配置信息，topic的配置信息，consumer的配置信息
+     * configTable的key是namespace，value是一个map，key是key，value是value
+     */
     public void printAllPeriodically() {
         try {
             this.lock.readLock().lockInterruptibly();

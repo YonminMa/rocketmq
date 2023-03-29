@@ -54,35 +54,61 @@ import org.apache.rocketmq.remoting.protocol.RequestCode;
 import org.apache.rocketmq.srvutil.FileWatchService;
 
 public class NamesrvController {
+    // 日志记录器，记录Namesrv的启动、关闭、配置信息等
     private static final Logger LOGGER = LoggerFactory.getLogger(LoggerName.NAMESRV_LOGGER_NAME);
+
+    // 日志记录器，记录Namesrv的水印信息，如Broker集群信息、Topic路由信息等
     private static final Logger WATER_MARK_LOG = LoggerFactory.getLogger(LoggerName.NAMESRV_WATER_MARK_LOGGER_NAME);
 
+    // NamesrvConfig配置对象，包括Namesrv的配置信息，如端口号、是否开启自动创建Topic等
     private final NamesrvConfig namesrvConfig;
 
+    // NettyServerConfig配置对象，包括Netty服务端的配置信息，如端口号、线程池大小等
     private final NettyServerConfig nettyServerConfig;
+
+    // NettyClientConfig配置对象，包括Netty客户端的配置信息，如端口号、线程池大小等
     private final NettyClientConfig nettyClientConfig;
 
+    // 定时任务线程池，用于定时打印配置信息
+    // 1. 每隔 10s 扫描 broker ,维护当前存活的Broker信息
+    // 2. 每隔 10s 打印当前存活的Broker信息
+    // 3. 每隔 10s 打印当前Topic路由信息
     private final ScheduledExecutorService scheduledExecutorService = new ScheduledThreadPoolExecutor(1,
             new BasicThreadFactory.Builder().namingPattern("NSScheduledThread").daemon(true).build());
 
+    // 定时任务线程池，用于定时扫描不活跃的Broker，并从路由信息中移除
     private final ScheduledExecutorService scanExecutorService = new ScheduledThreadPoolExecutor(1,
             new BasicThreadFactory.Builder().namingPattern("NSScanScheduledThread").daemon(true).build());
 
+    // KV配置管理器，用于管理KV配置信息，如Broker集群信息、Topic路由信息等
     private final KVConfigManager kvConfigManager;
+
+    // 路由信息管理器，用于管理Topic路由信息，如Broker集群信息、Topic路由信息等
     private final RouteInfoManager routeInfoManager;
 
+    // RemotingClient，用于向Broker发送注册请求
     private RemotingClient remotingClient;
+
+    // RemotingServer，用于接收Broker的注册请求
     private RemotingServer remotingServer;
 
+    // Broker清理服务，用于定时扫描不活跃的Broker，并从路由信息中移除
     private final BrokerHousekeepingService brokerHousekeepingService;
 
+    // 默认线程池，用于处理Broker的注册请求
     private ExecutorService defaultExecutor;
+    // 客户端请求线程池，用于处理客户端的请求
     private ExecutorService clientRequestExecutor;
 
+    // 默认线程池队列，用于处理Broker的注册请求
     private BlockingQueue<Runnable> defaultThreadPoolQueue;
+    // 客户端请求线程池队列，用于处理客户端的请求
     private BlockingQueue<Runnable> clientRequestThreadPoolQueue;
 
+    // 配置对象，用于管理Namesrv的配置信息，如端口号、是否开启自动创建Topic等
     private final Configuration configuration;
+
+    // 文件监听服务，用于监听配置文件的变化
     private FileWatchService fileWatchService;
 
     public NamesrvController(NamesrvConfig namesrvConfig, NettyServerConfig nettyServerConfig) {
@@ -101,27 +127,44 @@ public class NamesrvController {
     }
 
     public boolean initialize() {
+        // 加载配置信息
         loadConfig();
+        // 初始化网络组件
         initiateNetworkComponents();
+        // 初始化线程池
         initiateThreadExecutors();
+        // 注册处理器
         registerProcessor();
+        // 开启定时任务
         startScheduleService();
+        // 初始化SSL上下文
         initiateSslContext();
+        // 初始化文件监听服务
         initiateRpcHooks();
         return true;
     }
 
+    // 加载配置信息
     private void loadConfig() {
         this.kvConfigManager.load();
     }
 
+    /**
+     * 开启定时任务
+     * 1. 周期性扫描不活跃的Broker，并从路由信息中移除
+     * 2. 每隔 10s 打印KVConfig 信息
+     * 3. 周期性打印水印
+     */
     private void startScheduleService() {
+        // 周期性扫描不活跃的Broker，并从路由信息中移除
         this.scanExecutorService.scheduleAtFixedRate(NamesrvController.this.routeInfoManager::scanNotActiveBroker,
-            5, this.namesrvConfig.getScanNotActiveBrokerInterval(), TimeUnit.MILLISECONDS);
+                5, this.namesrvConfig.getScanNotActiveBrokerInterval(), TimeUnit.MILLISECONDS);
 
+        // 每隔 10s 打印KVConfig 信息
         this.scheduledExecutorService.scheduleAtFixedRate(NamesrvController.this.kvConfigManager::printAllPeriodically,
-            1, 10, TimeUnit.MINUTES);
+                1, 10, TimeUnit.MINUTES);
 
+        // 周期性打印水印
         this.scheduledExecutorService.scheduleAtFixedRate(() -> {
             try {
                 NamesrvController.this.printWaterMark();
@@ -131,6 +174,9 @@ public class NamesrvController {
         }, 10, 1, TimeUnit.SECONDS);
     }
 
+    /**
+     * 初始化网络组件
+     */
     private void initiateNetworkComponents() {
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
         this.remotingClient = new NettyRemotingClient(this.nettyClientConfig);

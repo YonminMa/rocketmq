@@ -80,6 +80,7 @@ public class NamesrvStartup {
         return null;
     }
 
+    // parseCommandlineAndConfigFile: 解析命令行参数和配置文件
     public static void parseCommandlineAndConfigFile(String[] args) throws Exception {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
 
@@ -93,7 +94,10 @@ public class NamesrvStartup {
         namesrvConfig = new NamesrvConfig();
         nettyServerConfig = new NettyServerConfig();
         nettyClientConfig = new NettyClientConfig();
+        // 设置namesrv的监听端口
         nettyServerConfig.setListenPort(9876);
+
+        // 如果命令行中有-c参数，则从配置文件中加载namesrvConfig、nettyServerConfig、nettyClientConfig、controllerConfig的属性
         if (commandLine.hasOption('c')) {
             String file = commandLine.getOptionValue('c');
             if (file != null) {
@@ -115,6 +119,7 @@ public class NamesrvStartup {
         }
 
         MixAll.properties2Object(ServerUtil.commandLine2Properties(commandLine), namesrvConfig);
+        // 如果命令行中有-p参数，则打印namesrvConfig、nettyServerConfig、nettyClientConfig、controllerConfig的属性
         if (commandLine.hasOption('p')) {
             MixAll.printObjectProperties(logConsole, namesrvConfig);
             MixAll.printObjectProperties(logConsole, nettyServerConfig);
@@ -134,6 +139,8 @@ public class NamesrvStartup {
 
     }
 
+    // createAndStartNamesrvController: 创建并启动NamesrvController
+    // NamesrvController: NamesrvController是Namesrv的核心控制器，负责启动Namesrv的各个组件
     public static NamesrvController createAndStartNamesrvController() throws Exception {
 
         NamesrvController controller = createNamesrvController();

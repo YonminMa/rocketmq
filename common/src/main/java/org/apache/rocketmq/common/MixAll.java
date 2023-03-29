@@ -344,19 +344,39 @@ public class MixAll {
         return properties;
     }
 
+    /**
+     * 将Properties对象转换为Object对象
+     *
+     * @param p Properties对象
+     * @param object Object对象
+     */
     public static void properties2Object(final Properties p, final Object object) {
+        // 获取 object 所有方法
         Method[] methods = object.getClass().getMethods();
+
+        // 遍历所有方法
         for (Method method : methods) {
+            // 获取方法名
             String mn = method.getName();
+            // 判断方法名是否以 set 开头
             if (mn.startsWith("set")) {
                 try {
+                    // 截取方法名后面的字符串
                     String tmp = mn.substring(4);
+                    // 将首字母转换为小写
                     String first = mn.substring(3, 4);
 
+                    // 拼接属性名
                     String key = first.toLowerCase() + tmp;
+                    // 从 properties 中获取属性值
                     String property = p.getProperty(key);
+
+                    // 判断属性值是否为空
                     if (property != null) {
+                        // 获取方法参数类型
                         Class<?>[] pt = method.getParameterTypes();
+
+                        // 判断参数类型是否为空
                         if (pt != null && pt.length > 0) {
                             String cn = pt[0].getSimpleName();
                             Object arg = null;

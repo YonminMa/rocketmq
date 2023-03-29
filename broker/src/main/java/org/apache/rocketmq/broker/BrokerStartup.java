@@ -96,6 +96,8 @@ public class BrokerStartup {
         }
 
         Properties properties = null;
+        // -c 指定配置文件
+        // 如果指定了配置文件，那么就从配置文件中加载配置
         if (commandLine.hasOption('c')) {
             String file = commandLine.getOptionValue('c');
             if (file != null) {

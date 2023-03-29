@@ -23,6 +23,30 @@ package org.apache.rocketmq.common.namesrv;
 import java.io.File;
 import org.apache.rocketmq.common.MixAll;
 
+/**
+ * NameServer 配置类
+ * <p>
+ * 1. rocketmqHome：RocketMQ 的主目录
+ * 2. kvConfigPath：NameServer的kv配置文件路径
+ * 3. configStorePath：NameServer的配置文件路径
+ * 4. productEnvName：NameServer的环境名称
+ * 5. clusterTest：是否是集群测试
+ * 6. orderMessageEnable：是否开启顺序消息
+ * 7. returnOrderTopicConfigToBroker：是否返回顺序消息的配置信息给Broker
+ * 8. clientRequestThreadPoolNums：处理客户端请求的线程池的线程数
+ * 9. defaultThreadPoolNums：处理Broker或者操作请求的线程池的线程数
+ * 10. clientRequestThreadPoolQueueCapacity：处理客户端请求的线程池的队列容量
+ * 11. defaultThreadPoolQueueCapacity：处理Broker或者操作请求的线程池的队列容量
+ * 12. scanNotActiveBrokerInterval：扫描非活跃Broker的间隔时间
+ * 13. unRegisterBrokerQueueCapacity：未注册Broker的队列容量
+ * 14. supportActingMaster：是否支持主从模式
+ * 15. enableAllTopicList：是否启用所有Topic列表
+ * 16. enableTopicList：是否启用Topic列表
+ * 17. notifyMinBrokerIdChanged：是否通知最小BrokerId发生变化
+ * 18. enableControllerInNamesrv：是否启用NameServer的控制器
+ * 19. needWaitForService：是否需要等待服务
+ * 20. waitSecondsForService：等待服务的时间
+ */
 public class NamesrvConfig {
 
     private String rocketmqHome = System.getProperty(MixAll.ROCKETMQ_HOME_PROPERTY, System.getenv(MixAll.ROCKETMQ_HOME_ENV));

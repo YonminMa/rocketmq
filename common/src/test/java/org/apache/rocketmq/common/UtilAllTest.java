@@ -47,11 +47,19 @@ public class UtilAllTest {
         properties.setProperty("demoLength", "456");
         properties.setProperty("demoOK", "true");
         properties.setProperty("demoName", "TestDemo");
+        properties.setProperty("demoLong", "1234567890123456789");
+        properties.setProperty("demoFloat", "123.456");
+        properties.setProperty("demoDouble", "123.456789");
+        properties.setProperty("demoShort", "123");
         MixAll.properties2Object(properties, demoConfig);
         assertThat(demoConfig.getDemoLength()).isEqualTo(456);
         assertThat(demoConfig.getDemoWidth()).isEqualTo(123);
         assertThat(demoConfig.isDemoOK()).isTrue();
         assertThat(demoConfig.getDemoName()).isEqualTo("TestDemo");
+        assertThat(demoConfig.getDemoLong()).isEqualTo(1234567890123456789L);
+        assertThat(demoConfig.getDemoFloat()).isEqualTo(123.456f);
+        assertThat(demoConfig.getDemoDouble()).isEqualTo(123.456789);
+        assertThat(demoConfig.getDemoShort()).isEqualTo((short) 0);
     }
 
     @Test
@@ -139,8 +147,12 @@ public class UtilAllTest {
         private int demoLength = 0;
         private boolean demoOK = false;
         private String demoName = "haha";
+        private long demoLong = 0L;
+        private double demoDouble = 0.0;
+        private float demoFloat = 0.0f;
+        private short demoShort = 0;
 
-        int getDemoWidth() {
+        public int getDemoWidth() {
             return demoWidth;
         }
 
@@ -172,14 +184,50 @@ public class UtilAllTest {
             this.demoName = demoName;
         }
 
+        public long getDemoLong() {
+            return demoLong;
+        }
+
+        public void setDemoLong(long demoLong) {
+            this.demoLong = demoLong;
+        }
+
+        public double getDemoDouble() {
+            return demoDouble;
+        }
+
+        public void setDemoDouble(double demoDouble) {
+            this.demoDouble = demoDouble;
+        }
+
+        public float getDemoFloat() {
+            return demoFloat;
+        }
+
+        public void setDemoFloat(float demoFloat) {
+            this.demoFloat = demoFloat;
+        }
+
+        public short getDemoShort() {
+            return demoShort;
+        }
+
+        public void setDemoShort(short demoShort) {
+            this.demoShort = demoShort;
+        }
+
         @Override
         public String toString() {
             return "DemoConfig{" +
-                "demoWidth=" + demoWidth +
-                ", demoLength=" + demoLength +
-                ", demoOK=" + demoOK +
-                ", demoName='" + demoName + '\'' +
-                '}';
+                    "demoWidth=" + demoWidth +
+                    ", demoLength=" + demoLength +
+                    ", demoOK=" + demoOK +
+                    ", demoName='" + demoName + '\'' +
+                    ", demoLong=" + demoLong +
+                    ", demoDouble=" + demoDouble +
+                    ", demoFloat=" + demoFloat +
+                    ", demoShort=" + demoShort +
+                    '}';
         }
     }
 
