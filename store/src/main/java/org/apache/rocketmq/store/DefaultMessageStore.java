@@ -200,16 +200,20 @@ public class DefaultMessageStore implements MessageStore {
 
     private long stateMachineVersion = 0L;
 
+    // this is a unmodifiableMap
+    private ConcurrentMap<String, TopicConfig> topicConfigTable;
+
     private final ScheduledExecutorService scheduledCleanQueueExecutorService =
         Executors.newSingleThreadScheduledExecutor(new ThreadFactoryImpl("StoreCleanQueueScheduledThread"));
 
     public DefaultMessageStore(final MessageStoreConfig messageStoreConfig, final BrokerStatsManager brokerStatsManager,
-        final MessageArrivingListener messageArrivingListener, final BrokerConfig brokerConfig) throws IOException {
+        final MessageArrivingListener messageArrivingListener, final BrokerConfig brokerConfig, final ConcurrentMap<String, TopicConfig> topicConfigTable) throws IOException {
         this.messageArrivingListener = messageArrivingListener;
         this.brokerConfig = brokerConfig;
         this.messageStoreConfig = messageStoreConfig;
         this.aliveReplicasNum = messageStoreConfig.getTotalReplicas();
         this.brokerStatsManager = brokerStatsManager;
+        this.topicConfigTable = topicConfigTable;
         this.allocateMappedFileService = new AllocateMappedFileService(this);
         if (messageStoreConfig.isEnableDLegerCommitLog()) {
             this.commitLog = new DLedgerCommitLog(this);
@@ -385,9 +389,6 @@ public class DefaultMessageStore implements MessageStore {
 
         this.flushConsumeQueueService.start();
         this.commitLog.start();
-        if (messageStoreConfig.isEnableCompaction() && this.compactionService != null) {
-            this.compactionService.start();
-        }
         this.storeStatsService.start();
 
         if (this.haService != null) {
@@ -474,12 +475,13 @@ public class DefaultMessageStore implements MessageStore {
             }
 
             this.storeStatsService.shutdown();
+            this.commitLog.shutdown();
+            this.reputMessageService.shutdown();
+            // dispatch-related services must be shut down after reputMessageService
             this.indexService.shutdown();
             if (this.compactionService != null) {
                 this.compactionService.shutdown();
             }
-            this.commitLog.shutdown();
-            this.reputMessageService.shutdown();
 
             this.flushConsumeQueueService.shutdown();
             this.allocateMappedFileService.shutdown();
@@ -2049,18 +2051,16 @@ public class DefaultMessageStore implements MessageStore {
         }
     }
 
-    @Override
     public ConcurrentMap<String, TopicConfig> getTopicConfigs() {
-        return this.consumeQueueStore.getTopicConfigs();
+        return this.topicConfigTable;
     }
 
-    @Override
     public Optional<TopicConfig> getTopicConfig(String topic) {
-        return this.consumeQueueStore.getTopicConfig(topic);
-    }
+        if (this.topicConfigTable == null) {
+            return Optional.empty();
+        }
 
-    public void setTopicConfigTable(ConcurrentMap<String, TopicConfig> topicConfigTable) {
-        this.consumeQueueStore.setTopicConfigTable(topicConfigTable);
+        return Optional.ofNullable(this.topicConfigTable.get(topic));
     }
 
     public BrokerIdentity getBrokerIdentity() {
@@ -2580,7 +2580,7 @@ public class DefaultMessageStore implements MessageStore {
             }
 
             if (messageStoreConfig.isEnableCompaction()) {
-                compactionStore.flushCQ(flushConsumeQueueLeastPages);
+                compactionStore.flush(flushConsumeQueueLeastPages);
             }
 
             if (0 == flushConsumeQueueLeastPages) {
@@ -2812,7 +2812,7 @@ public class DefaultMessageStore implements MessageStore {
 
         private void notifyMessageArrive4MultiQueue(DispatchRequest dispatchRequest) {
             Map<String, String> prop = dispatchRequest.getPropertiesMap();
-            if (prop == null) {
+            if (prop == null || dispatchRequest.getTopic().startsWith(MixAll.RETRY_GROUP_TOPIC_PREFIX)) {
                 return;
             }
             String multiDispatchQueue = prop.get(MessageConst.PROPERTY_INNER_MULTI_DISPATCH);
@@ -2885,7 +2885,7 @@ public class DefaultMessageStore implements MessageStore {
                     BatchDispatchRequest task = batchDispatchRequestQueue.peek();
                     batchDispatchRequestExecutor.execute(() -> {
                         try {
-                            ByteBuffer tmpByteBuffer = task.byteBuffer.duplicate();
+                            ByteBuffer tmpByteBuffer = task.byteBuffer;
                             tmpByteBuffer.position(task.position);
                             tmpByteBuffer.limit(task.position + task.size);
                             List<DispatchRequest> dispatchRequestList = new ArrayList<>();
@@ -3018,7 +3018,7 @@ public class DefaultMessageStore implements MessageStore {
                 return;
             }
             mappedPageHoldCount.getAndIncrement();
-            BatchDispatchRequest task = new BatchDispatchRequest(byteBuffer, position, size, batchId++);
+            BatchDispatchRequest task = new BatchDispatchRequest(byteBuffer.duplicate(), position, size, batchId++);
             batchDispatchRequestQueue.offer(task);
         }
 
